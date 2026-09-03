@@ -13,7 +13,7 @@
 //! Exemple d'intégration et de simulation en temps réel avec `drew_physics`.
 //!
 //! Ce programme illustre la création d'un monde physique 2D contraint dans un écran
-//! de dimensions $240 \times 320$, le lâcher d'une bille avec une vitesse initiale,
+//! de dimensions 240x320, le lâcher d'une bille avec une vitesse initiale,
 //! et l'affichage console de sa trajectoire sur 60 frames (1 seconde à 60 FPS).
 //!
 //! Exécution :
@@ -41,7 +41,7 @@ fn main() {
     // Initialisation d'une bille dynamique avec vitesse initiale
     let mut bille = Body::new(Vec2::new(120.0, 10.0), 1.0, 8.0);
     bille.velocity = Vec2::new(40.0, 0.0);
-    world.add_body(bille);
+    let _ = world.add_body(bille);
 
     // Intervalle de temps par frame (soit ~60 images par seconde)
     let dt = 0.016;

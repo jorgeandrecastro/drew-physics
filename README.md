@@ -18,18 +18,19 @@ Moteur de simulation physique 2D agnostique, déterministe, sans allocation et o
 
 ## Installation
 
+Ajoutez ceci à votre fichier `Cargo.toml` :
+
 ```toml
 [dependencies]
 drew-physics = "0.1"
 ```
 
-Aucune dépendance externe : la bibliothèque est 100% autonome et compatible avec tous les targets #![no_std].
+Aucune dépendance externe : la bibliothèque est 100% autonome et compatible avec toutes les cibles #![no_std].
 
 ## Utilisation
-
 ### Initialisation et boucle de simulation
+```Rust
 
-```rust 
 use drew_physics::{Body, Vec2, World, WorldSettings};
 
 // Configuration des paramètres environnementaux
@@ -51,14 +52,12 @@ world.add_body(body).expect("Capacité du monde atteinte");
 
 // Avancement de la simulation d'un pas de temps (dt = 16ms)
 world.step(0.016);
-
 ```
 
 ## Corps statiques et forces appliquées
 
-**Pour créer un corps statique (immobile et insensible à la gravité), passez une masse de 0.0 :**
-
-```rust 
+Pour créer un corps statique (immobile et insensible à la gravité), passez une masse de 0.0 :
+```Rust
 use drew_physics::{Body, Vec2};
 
 // Corps immobile de rayon 10.0
@@ -68,17 +67,20 @@ let static_body = Body::new(Vec2::new(400.0, 300.0), 0.0, 10.0);
 let mut dynamic_body = Body::new(Vec2::new(100.0, 100.0), 2.0, 5.0);
 dynamic_body.apply_force(Vec2::new(10.0, -50.0));
 ```
+
 ## Exemple complet
 
-```bash 
+Pour lancer la démonstration en ligne de commande :
+```Bash
+
 cargo run --example demo
 ```
 
 ## Historique des versions
 
-    0.1.0 : Version initiale : support no_std, intégration d'Euler semi-implicite, frottement visqueux, limites de boîte et corps statiques/dynamiques.
+    0.1.0 : Version initiale : support #![no_std], intégration d'Euler semi-implicite, frottement visqueux, limites de boîte et gestion des corps statiques et dynamiques.
 
-## License
+## Licence
 
 GPL-2.0-or-later
 

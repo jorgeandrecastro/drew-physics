@@ -28,8 +28,8 @@
 //!
 //! ## Exemple d'utilisation
 //!
-//! ```rust
-//! use votre_crate::{Body, Vec2, World, WorldSettings};
+//! ```ignore
+//! use drew_physics::{Body, Vec2, World, WorldSettings};
 //!
 //! // Configuration de l'environnement
 //! let settings = WorldSettings {
@@ -70,7 +70,7 @@ impl Vec2 {
         Self { x, y }
     }
 
-    /// Calcule la norme au carré du vecteur ($\text{x}^2 + \text{y}^2$).
+    /// Calcule la norme au carré du vecteur (x² + y²).
     ///
     /// Utile pour comparer des distances sans coût d'extraction de racine carrée (`sqrt`).
     pub fn length_squared(&self) -> f32 {
@@ -124,7 +124,7 @@ pub struct Body {
     pub velocity: Vec2,
     /// Accélération accumulée pour le pas de temps courant.
     pub acceleration: Vec2,
-    /// Inverse de la masse ($1 / m$). Une valeur de `0.0` indique une masse infinie (corps statique/immobile).
+    /// Inverse de la masse (1 / m). Une valeur de `0.0` indique une masse infinie (corps statique/immobile).
     pub inv_mass: f32,
     /// Coefficient de restitution / rebond (compris entre `0.0` pour un choc inélastique et `1.0` pour un choc parfait).
     pub restitution: f32,
@@ -149,7 +149,12 @@ impl Body {
         }
     }
 
-    /// Applique une force extérieure au corps ($\vec{F} = m \cdot \vec{a} \implies \vec{a} += \vec{F} \cdot \text{inv\_mass}$).
+    /// Indique si le corps est statique (masse infinie / `inv_mass == 0.0`).
+    pub fn is_static(&self) -> bool {
+        self.inv_mass == 0.0
+    }
+
+    /// Applique une force extérieure au corps.
     ///
     /// Ne produit aucun effet si le corps est statique (`inv_mass == 0.0`).
     pub fn apply_force(&mut self, force: Vec2) {
@@ -192,6 +197,11 @@ impl<const N: usize> World<N> {
         }
     }
 
+    /// Renvoie un itérateur mutable sur la liste des corps du monde.
+    pub fn bodies_mut(&mut self) -> &mut [Option<Body>; N] {
+        &mut self.bodies
+    }
+
     /// Ajoute un corps dans le premier emplacement disponible du monde.
     ///
     /// Renvoie `Some(index)` en cas de succès, ou `None` si la capacité maximale `N` est atteinte.
@@ -211,12 +221,12 @@ impl<const N: usize> World<N> {
     /// la viscosité du milieu et résout les collisions avec les limites du monde.
     pub fn step(&mut self, dt: f32) {
         for slot in self.bodies.iter_mut() {
-            if let Some(ref mut body) = slot {
-                if body.inv_mass == 0.0 {
+            if let Some(body) = slot {
+                if body.is_static() {
                     continue; // Corps statique
                 }
 
-                // 1. Force de gravité
+                // 1. Accumulation initiale avec la gravité
                 body.acceleration += self.settings.gravity;
 
                 // 2. Intégration d'Euler semi-implicite
@@ -231,7 +241,7 @@ impl<const N: usize> World<N> {
                 // 4. Mise à jour de la position
                 body.position += body.velocity * dt;
 
-                // 5. Remise à zéro de l'accélération
+                // 5. Remise à zéro de l'accélération pour la frame suivante
                 body.acceleration = Vec2::ZERO;
 
                 // 6. Gestion des collisions avec les bordures
