@@ -23,8 +23,9 @@
 //!
 //! - **Sans allocation (`no_std`)** : Utilise des tableaux à taille fixe génériques `[Option<Body>; N]`.
 //! - **Intégration d'Euler semi-implicite** : Garantit une bonne stabilité numérique pour la vélocité et la position.
-//! - **Gestion des frontières** : Détection et résolution automatique des collisions avec rebond (`restitution`).
+//! - **Gestion des frontières et collisions** : Détection et résolution automatique des collisions avec les bordures et entre les corps (cercle-cercle) par impulsions.
 //! - **Viscosité et gravité** : Prise en charge des forces environnementales globales.
+//! - **Cycle de vie** : Ajout et suppression dynamique de corps dans les limites du tableau statique.
 //!
 //! ## Exemple d'utilisation
 //!
@@ -223,10 +224,10 @@ impl<const N: usize> World<N> {
         for slot in self.bodies.iter_mut() {
             if let Some(body) = slot {
                 if body.is_static() {
-                    continue; // Corps statique
+                    continue;
                 }
 
-                // 1. Accumulation initiale avec la gravité
+                // 1. Accumulation de la gravité (qui est une accélération)
                 body.acceleration += self.settings.gravity;
 
                 // 2. Intégration d'Euler semi-implicite
@@ -241,13 +242,16 @@ impl<const N: usize> World<N> {
                 // 4. Mise à jour de la position
                 body.position += body.velocity * dt;
 
-                // 5. Remise à zéro de l'accélération pour la frame suivante
+                // 5. Remise à zéro de l'accélération
                 body.acceleration = Vec2::ZERO;
 
                 // 6. Gestion des collisions avec les bordures
                 Self::resolve_boundaries(body, &self.settings);
             }
         }
+
+        // Résolution des collisions entre les corps
+        self.resolve_body_collisions();
     }
 
     /// Détecte et résout les collisions d'un corps avec les bordures du monde.
@@ -271,6 +275,80 @@ impl<const N: usize> World<N> {
         } else if body.position.y > max_y {
             body.position.y = max_y;
             body.velocity.y = -body.velocity.y * body.restitution;
+        }
+    }
+
+    /// Supprime un corps du monde par son indice.
+    pub fn remove_body(&mut self, index: usize) {
+        if index < N {
+            self.bodies[index] = None;
+        }
+    }
+
+    /// Résout les collisions élastiques entre tous les corps du monde.
+    fn resolve_body_collisions(&mut self) {
+        for i in 0..N {
+            for j in (i + 1)..N {
+                // On s'assure que les indices sont différents et on extrait les deux éléments en toute sécurité
+                if i == j {
+                    continue;
+                }
+
+                // Extraction sécurisée de deux éléments distincts d'un tableau/tranche mutable en no_std
+                let (b1, b2) = if i < j {
+                    let (left, right) = self.bodies.split_at_mut(j);
+                    (&mut left[i], &mut right[0])
+                } else {
+                    let (left, right) = self.bodies.split_at_mut(i);
+                    (&mut right[0], &mut left[j])
+                };
+
+                if let (Some(b1), Some(b2)) = (b1, b2) {
+                    let normal = b2.position - b1.position;
+                    let dist_sq = normal.length_squared();
+                    let radius_sum = b1.radius + b2.radius;
+
+                    if dist_sq < radius_sum * radius_sum && dist_sq > 0.0 {
+                        // Utilisation de votre crate embarquée embedded-f32-sqrt
+                        let dist = embedded_f32_sqrt::sqrt(dist_sq).unwrap_or(0.0);
+                        if dist == 0.0 {
+                            continue;
+                        }
+
+                        let normal = normal * (1.0 / dist);
+                        let overlap = radius_sum - dist;
+
+                        let total_inv_mass = b1.inv_mass + b2.inv_mass;
+                        if total_inv_mass > 0.0 {
+                            // Correction de position
+                            if !b1.is_static() {
+                                b1.position += normal * (-overlap * (b1.inv_mass / total_inv_mass));
+                            }
+                            if !b2.is_static() {
+                                b2.position += normal * (overlap * (b2.inv_mass / total_inv_mass));
+                            }
+
+                            // Résolution d'impulsion
+                            let rv = b2.velocity - b1.velocity;
+                            let vel_along_normal = rv.x * normal.x + rv.y * normal.y;
+
+                            if vel_along_normal < 0.0 {
+                                let restitution = b1.restitution.min(b2.restitution);
+                                let impulse_scalar =
+                                    -(1.0 + restitution) * vel_along_normal / total_inv_mass;
+                                let impulse = normal * impulse_scalar;
+
+                                if !b1.is_static() {
+                                    b1.velocity = b1.velocity - impulse * b1.inv_mass;
+                                }
+                                if !b2.is_static() {
+                                    b2.velocity = b2.velocity + impulse * b2.inv_mass;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

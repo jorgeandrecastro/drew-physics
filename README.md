@@ -11,9 +11,9 @@ Moteur de simulation physique 2D agnostique, déterministe, sans allocation et o
 
 | Composant | Rôle | Caractéristiques |
 |---|---|---|
-| **Stockage statique** | Gestion des corps sans allocation mémoire (`heap`) | Utilise un tableau à taille fixe générique `[Option<Body>; N]` |
+| **Stockage statique** | Gestion des corps sans allocation mémoire (`heap`) | Utilise un tableau à taille fixe générique `[Option<Body>; N]` avec ajout/suppression dynamiques |
 | **Intégration numérique** | Calcul des trajectoires vitesse et position | Euler semi-implicite pour une meilleure stabilité dynamique |
-| **Gestion des bordures** | Détection et résolution des collisions | Rebond calculé automatiquement selon la `restitution` du corps |
+| **Gestion des collisions** | Détection et résolution des collisions | Rebond sur les bordures et entre les corps (cercle-cercle) par impulsions |
 | **Forces environnementales** | Application des contraintes globales | Prise en charge de la gravité et de la viscosité (frottement du milieu) |
 
 ## Installation
@@ -22,15 +22,14 @@ Ajoutez ceci à votre fichier `Cargo.toml` :
 
 ```toml
 [dependencies]
-drew-physics = "0.1"
+drew-physics = "0.2"
 ```
 
-Aucune dépendance externe : la bibliothèque est 100% autonome et compatible avec toutes les cibles #![no_std].
+Aucune dépendance externe (hors calcul mathématique de racine carrée embarqué) : la bibliothèque est compatible avec toutes les cibles `#![no_std]`.
 
 ## Utilisation
 ### Initialisation et boucle de simulation
-```Rust
-
+```rust
 use drew_physics::{Body, Vec2, World, WorldSettings};
 
 // Configuration des paramètres environnementaux
@@ -48,16 +47,19 @@ let mut world = World::<10>::new(settings);
 let mut body = Body::new(Vec2::new(100.0, 100.0), 1.0, 5.0);
 body.velocity = Vec2::new(50.0, 0.0);
 
-world.add_body(body).expect("Capacité du monde atteinte");
+let body_idx = world.add_body(body).expect("Capacité du monde atteinte");
 
 // Avancement de la simulation d'un pas de temps (dt = 16ms)
 world.step(0.016);
+
+// Suppression optionnelle du corps par son indice
+world.remove_body(body_idx);
 ```
 
 ## Corps statiques et forces appliquées
 
 Pour créer un corps statique (immobile et insensible à la gravité), passez une masse de 0.0 :
-```Rust
+```rust
 use drew_physics::{Body, Vec2};
 
 // Corps immobile de rayon 10.0
@@ -71,13 +73,19 @@ dynamic_body.apply_force(Vec2::new(10.0, -50.0));
 ## Exemple complet
 
 Pour lancer la démonstration en ligne de commande :
-```Bash
-
-cargo run --example demo
+```bash
+cargo run --example simulation
 ```
+Exemple visuel Bevy version 0.19
+
+```bash
+cargo run --example simulation_gui
+``
+
 
 ## Historique des versions
 
+    0.2.0 : Ajout des collisions inter-corps (cercle-cercle), de la méthode de suppression dynamique `remove_body`, et correction de l'application de la gravité.
     0.1.0 : Version initiale : support #![no_std], intégration d'Euler semi-implicite, frottement visqueux, limites de boîte et gestion des corps statiques et dynamiques.
 
 ## Licence

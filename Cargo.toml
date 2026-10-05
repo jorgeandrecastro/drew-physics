@@ -1,6 +1,6 @@
 [package]
 name = "drew-physics"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Jorge Andre Castro"]
 description = "Moteur de simulation physique 2D agnostique, no_std, sans allocation et optimisé f32"
@@ -9,6 +9,7 @@ repository = "https://github.com/jorgeandrecastro/drew-physics"
 readme = "README.md"
 keywords = ["physics", "2d", "no_std", "game-development", "simulation"]
 categories = ["game-engines", "no-std", "science"]
+documentation = "https://docs.rs/drew-physics"
 
 [lib]
 name = "drew_physics"
@@ -19,4 +20,14 @@ name = "simulation"
 path = "examples/simulation.rs"
 
 [dependencies]
-# Zéro dépendance pour garantir le support no_std universel
+embedded-f32-sqrt = "0.2.0"
+
+[dev-dependencies]
+bevy = "0.19" 
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
